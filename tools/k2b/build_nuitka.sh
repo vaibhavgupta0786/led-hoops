@@ -39,6 +39,29 @@ PYTHONPATH="$ROOT/games" python3 -m nuitka \
   --output-filename=hoops-api \
   api_main_freeze.py
 
-echo "== 3. stage allowlist + deny .py =="
+echo "== 3. freeze supervisor (tiny, same hardening) =="
+python3 -m nuitka \
+  --standalone --onefile \
+  --static-libpython=no \
+  --lto=yes \
+  --python-flag=-OO \
+  --assume-yes-for-downloads \
+  --output-dir=build-nuitka-supervisor \
+  --output-filename=supervisor \
+  tools/k2b/supervisor.py
+
+echo "== 4. freeze bridge =="
+python3 -m nuitka \
+  --standalone --onefile \
+  --static-libpython=no \
+  --lto=yes \
+  --python-flag=-OO \
+  --assume-yes-for-downloads \
+  --output-dir=build-nuitka-bridge \
+  --output-filename=hoops-bridge \
+  ws_bridge.py
+
+echo "== 5. stage allowlist + deny .py =="
 python3 tools/k2b/stage_allowlist.py --dist "$DIST" --out "$STAGE"
+cp build-nuitka/hoops-api build-nuitka-bridge/hoops-bridge build-nuitka-supervisor/supervisor "$STAGE/"
 echo "done: $STAGE"

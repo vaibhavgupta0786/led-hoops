@@ -1,0 +1,60 @@
+name: k2b-operator-build
+# Pilot: Hoops Nuitka operator zip on tag v*-k2b* (e.g. v0.1-k2b-pilot).
+# Windows Nuitka = primary operator download. Mac Nuitka = Mac track.
+# Artifacts must contain zero *.py / frontend/src (asserted below).
+
+on:
+  push:
+    tags:
+      - "v*-k2b*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install freezer
+        run: pip install nuitka ordered-set zstandard
+      - name: Check LFS levels are real
+        shell: bash
+        run: |
+          test -f games/source/-/001.led
+          head -c 20 games/source/-/001.led | grep -q "PK" || (echo "LFS pointer, not data" && exit 1)
+      - name: Build operator stage
+        shell: bash
+        run: bash tools/k2b/build_nuitka.sh
+      - name: Deny source in artifact
+        shell: bash
+        run: |
+          test -z "$(find stage-k2b -name '*.py' -o -name 'frontend' -maxdepth 2 | head -1)" || (echo "SOURCE LEAK" && exit 1)
+          test -f stage-k2b/hoops-api || test -f stage-k2b/hoops-api.exe
+          test -d stage-k2b/ui
+      - name: Zip stage
+        shell: bash
+        run: |
+          cd stage-k2b && (zip -qr ../hoops-k2b-${{ matrix.os }}.zip . || 7z a ../hoops-k2b-${{ matrix.os }}.zip .)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hoops-k2b-${{ matrix.os }}
+          path: hoops-k2b-${{ matrix.os }}.zip
+      - name: Release on tag
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: hoops-k2b-${{ matrix.os }}.zip
+          body: "Hoops K2b pilot. Prefer the windows zip on floor PCs."
