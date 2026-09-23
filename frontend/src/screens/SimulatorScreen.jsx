@@ -230,6 +230,17 @@ export default function SimulatorScreen({ config, onGameEnd }) {
     return () => clearInterval(interval)
   }, [gameId])
 
+  // Background music: looped track during gameplay, low under SFX.
+  // Browser-safe: starts after user clicks (game start), stops on exit.
+  useEffect(() => {
+    if (!gameId) return
+    const bgm = new Audio('/media/bgm.mp3')
+    bgm.loop = true
+    bgm.volume = 0.25
+    bgm.play().catch(() => {})
+    return () => { bgm.pause() }
+  }, [gameId])
+
   if (loading) {
     return (
       <div className="screen">
