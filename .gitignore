@@ -10,6 +10,9 @@ frontend/dist/
 # Shelve COM/grid settings are tracked (led_parameter.dat etc.)
 games/setting/ledplaydb.sqlite
 .DS_Store
+# K2b operator packaging (local only, never commit)
+/stage-k2b/
+/build-nuitka/
 
 # Source archives (local backup bundles)
 games/source/*.rar

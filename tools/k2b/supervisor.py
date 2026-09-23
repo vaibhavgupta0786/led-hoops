@@ -1,0 +1,84 @@
+"""Hoops operator supervisor (frozen).
+Spawns API + bridge next to the exe, opens Chrome kiosk, waits.
+No source paths — uses exe folder as install root.
+"""
+import os
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+from urllib.request import urlopen
+
+
+def install_root() -> Path:
+    if getattr(sys, "frozen", False):
+        mp = getattr(sys, "_MEIPASS", None)
+        if mp:
+            return Path(mp)
+        return Path(sys.argv[0]).resolve().parent
+    return Path(__file__).resolve().parent.parent.parent
+
+
+def wait_http(url: str, timeout: int = 60) -> bool:
+    end = time.time() + timeout
+    while time.time() < end:
+        try:
+            with urlopen(url, timeout=3) as r:
+                if r.status < 500:
+                    return True
+        except Exception:
+            time.sleep(1)
+    return False
+
+
+def main() -> int:
+    root = install_root()
+    api_port = int(os.getenv("API_PORT", "8000"))
+    bridge_port = int(os.getenv("WS_BRIDGE_PORT", "8765"))
+
+    api_exe = root / ("hoops-api.exe" if os.name == "nt" else "hoops-api")
+    bridge_exe = root / ("hoops-bridge.exe" if os.name == "nt" else "hoops-bridge")
+    if not api_exe.exists():
+        print(f"missing {api_exe} — reinstall operator zip")
+        return 1
+
+    env = dict(os.environ, GAMES_ROOT=str(root / "games"), UI_DIR=str(root / "ui"),
+               INSTALL_ROOT=str(root))
+    procs = []
+    procs.append(subprocess.Popen([str(api_exe)], env=env, cwd=str(root)))
+    if bridge_exe.exists():
+        procs.append(subprocess.Popen([str(bridge_exe)], env=env, cwd=str(root)))
+
+    if not wait_http(f"http://127.0.0.1:{api_port}/health", 60):
+        print("API did not start — closing")
+        for p in procs:
+            p.terminate()
+        return 1
+
+    url = f"http://127.0.0.1:{api_port}/"
+    chrome = shutil.which("chrome") or shutil.which("google-chrome") \
+        or shutil.which("msedge") or shutil.which("chromium")
+    try:
+        if chrome:
+            subprocess.Popen([chrome, "--kiosk", url])
+        else:
+            import webbrowser
+            webbrowser.open(url)
+        print(f"opened kiosk {url} — press Ctrl+Shift+K in browser to exit kiosk")
+    except Exception as e:
+        print(f"open browser manually: {url} ({e})")
+
+    try:
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        for p in procs:
+            p.terminate()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
