@@ -265,20 +265,6 @@ async def health():
     }
 
 
-# ============= SERVE BUILT UI (freeze: no Node needed) =============
-# Source dev still uses Vite. Frozen app serves ui/ (frontend/dist copy).
-try:
-    from fastapi.staticfiles import StaticFiles as _StaticFiles
-
-    if UI_DIR.exists() and (UI_DIR / "index.html").exists():
-        app.mount("/", _StaticFiles(directory=str(UI_DIR), html=True), name="ui")
-        logger.info(f"Serving built UI from {UI_DIR}")
-    else:
-        logger.info(f"Built UI not found at {UI_DIR} (dev uses Vite)")
-except Exception as _ui_err:
-    logger.warning(f"UI mount skipped: {_ui_err}")
-
-
 @app.get("/scores")
 async def get_scores(since: str = "2000-01-01T00:00:00"):
     """Return scores recorded after `since` timestamp. Used by RFID poller."""
