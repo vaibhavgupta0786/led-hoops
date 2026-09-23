@@ -536,6 +536,21 @@ async def shutdown():
     db.close()
 
 
+# ============= SERVE BUILT UI LAST (freeze: no Node needed) =============
+# Must stay AFTER all API routes: "/" matches everything, so API answers
+# (/levels, /health, ...) must be checked first. Source dev still uses Vite.
+try:
+    from fastapi.staticfiles import StaticFiles as _StaticFiles
+
+    if UI_DIR.exists() and (UI_DIR / "index.html").exists():
+        app.mount("/", _StaticFiles(directory=str(UI_DIR), html=True), name="ui")
+        logger.info(f"Serving built UI from {UI_DIR}")
+    else:
+        logger.info(f"Built UI not found at {UI_DIR} (dev uses Vite)")
+except Exception as _ui_err:
+    logger.warning(f"UI mount skipped: {_ui_err}")
+
+
 # ============= RUN =============
 if __name__ == "__main__":
     import uvicorn
