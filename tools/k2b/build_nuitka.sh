@@ -29,6 +29,9 @@ PYTHONPATH="$ROOT/games" python3 -m nuitka \
   --include-module=game_play.game_running \
   --include-module=game_play.game_util \
   --include-module=model.setting \
+  --include-module=model.game \
+  --include-module=model.group \
+  --nofollow-import-to=tkinter,gui,gui2,ui_design,net,pygame,audio_play,moviepy,cv2,pynput,encryption,rsa,Crypto,mysql,numpy,PIL,serial,led \
   --output-dir=build-nuitka \
   --output-filename=hoops-api \
   api_main_freeze.py
