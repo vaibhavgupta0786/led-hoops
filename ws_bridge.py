@@ -19,8 +19,22 @@ import httpx
 
 app = FastAPI()
 
-# Serve static simulator files
-SIMULATOR_STATIC = str(Path(__file__).resolve().parent / "simulator" / "static")
+# Serve static simulator files.
+# Frozen-safe: env wins, then INSTALL_ROOT (exe folder), then source layout.
+# Plain __file__-relative breaks frozen (exe unpacks to a temp dir).
+def _sim_static() -> str:
+    env = os.getenv("SIMULATOR_STATIC")
+    if env:
+        return env
+    root = os.getenv("INSTALL_ROOT")
+    if root:
+        cand = Path(root) / "simulator" / "static"
+        if (cand / "index.html").exists():
+            return str(cand)
+    return str(Path(__file__).resolve().parent / "simulator" / "static")
+
+
+SIMULATOR_STATIC = _sim_static()
 app.mount("/static", StaticFiles(directory=SIMULATOR_STATIC), name="static")
 
 HOST = "127.0.0.1"
