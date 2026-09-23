@@ -204,4 +204,5 @@ if __name__ == "__main__":
     print(f"Web UI: http://{HOST}:{PORT}")
 
     # Start WebSocket server (poller launches via startup event)
-    uvicorn.run(app, host=HOST, port=PORT, log_level="info")
+    # loop="asyncio": uvloop breaks when launched detached/frozen (no TTY signals).
+    uvicorn.run(app, host=HOST, port=PORT, log_level="info", loop="asyncio")
