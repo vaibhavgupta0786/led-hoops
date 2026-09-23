@@ -1,15 +1,43 @@
 """
 API Configuration - Game and Database Settings
+Freeze-safe: works from source checkout AND from Nuitka/PyInstaller exe.
 """
 import os
 import sys
 from pathlib import Path
+
+
+def get_install_root() -> Path:
+    """Folder holding the running app.
+
+    Source run -> repo root (parent of api/).
+    Frozen run -> exe folder, or PyInstaller bundle folder.
+    Env INSTALL_ROOT always wins (for CI smoke / custom layout).
+    """
+    env = os.getenv("INSTALL_ROOT")
+    if env:
+        return Path(env)
+    if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            return Path(meipass)
+        return Path(sys.argv[0]).resolve().parent
+    return Path(__file__).resolve().parent.parent
+
+
+_INSTALL_ROOT = get_install_root()
 
 # GAMES_ROOT: path to the game source directory.
 # Default = ../games/ relative to this repo.
 # Override with GAMES_ROOT env var if running from a different location.
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 GAMES_ROOT = Path(os.getenv("GAMES_ROOT", str(_REPO_ROOT / "games")))
+# Under freeze, default to games/ next to the exe when env is unset.
+if "GAMES_ROOT" not in os.environ and getattr(sys, "frozen", False):
+    GAMES_ROOT = _INSTALL_ROOT / "games"
+
+# ui/ = built website files (frontend/dist copied next to exe as ui/).
+UI_DIR = Path(os.getenv("UI_DIR", str(_INSTALL_ROOT / "ui")))
 
 # Game Configuration
 GAME_NAME = "hoops"

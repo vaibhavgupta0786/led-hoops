@@ -10,7 +10,7 @@ import os
 from loguru import logger
 import datetime
 
-from .config import API_HOST, API_PORT, API_DEBUG, GAME_NAME, GAMES_ROOT
+from .config import API_HOST, API_PORT, API_DEBUG, GAME_NAME, GAMES_ROOT, UI_DIR
 from .models import (
     LoginRequest, LoginResponse, PlayerInfo,
     StartGameRequest, StartGameResponse,
@@ -263,6 +263,20 @@ async def health():
         "game": GAME_NAME,
         "stats": stats
     }
+
+
+# ============= SERVE BUILT UI (freeze: no Node needed) =============
+# Source dev still uses Vite. Frozen app serves ui/ (frontend/dist copy).
+try:
+    from fastapi.staticfiles import StaticFiles as _StaticFiles
+
+    if UI_DIR.exists() and (UI_DIR / "index.html").exists():
+        app.mount("/", _StaticFiles(directory=str(UI_DIR), html=True), name="ui")
+        logger.info(f"Serving built UI from {UI_DIR}")
+    else:
+        logger.info(f"Built UI not found at {UI_DIR} (dev uses Vite)")
+except Exception as _ui_err:
+    logger.warning(f"UI mount skipped: {_ui_err}")
 
 
 @app.get("/scores")
