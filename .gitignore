@@ -13,6 +13,8 @@ games/setting/ledplaydb.sqlite
 # K2b operator packaging (local only, never commit)
 /stage-k2b/
 /build-nuitka/
+/build-nuitka-bridge/
+/nuitka-crash-report.xml
 
 # Source archives (local backup bundles)
 games/source/*.rar
