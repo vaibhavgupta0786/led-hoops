@@ -22,20 +22,14 @@ from .config import (
 )
 from .level_scaling import LevelScalingError, scale_level_to_platform
 
-try:
-    from hardware_config import (
-        HardwareConfigError,
-        parse_dimension,
-        validate_hardware_config,
-        validate_platform_config,
-    )
-except ImportError:  # pragma: no cover - package-relative fallback
-    from ..hardware_config import (  # type: ignore
-        HardwareConfigError,
-        parse_dimension,
-        validate_hardware_config,
-        validate_platform_config,
-    )
+# Single absolute spelling (repo root on sys.path via config.py / freeze entry).
+# A second relative spelling of the same module trips frozen compilers.
+from hardware_config import (
+    HardwareConfigError,
+    parse_dimension,
+    validate_hardware_config,
+    validate_platform_config,
+)
 
 # Hardware mode: set USE_SERIAL_HD=1 env var to drive physical LED floor via serial.
 # Sim mode (default): browser canvas only. HW mode: serial + canvas simultaneously.
