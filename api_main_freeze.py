@@ -11,4 +11,6 @@ from api.config import API_HOST, API_PORT
 from api.main import app
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=API_HOST, port=int(os.getenv("API_PORT", API_PORT)))
+    # loop="asyncio": uvloop breaks when launched detached (no TTY signals).
+    uvicorn.run(app, host=API_HOST, port=int(os.getenv("API_PORT", API_PORT)),
+                loop="asyncio")
