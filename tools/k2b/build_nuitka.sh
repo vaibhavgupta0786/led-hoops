@@ -3,6 +3,9 @@
 # Goal: compiled code hard to open back up. No .py in output.
 # Usage: bash tools/k2b/build_nuitka.sh
 set -e
+# macOS/Linux have `python3`; Windows CI runners only ship `python`.
+PY=python3
+command -v python3 >/dev/null 2>&1 || PY=python
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 FRONT="$ROOT/frontend"
@@ -19,7 +22,7 @@ echo "== 2. freeze api (hardened flags) =="
 # so no engine .py ships on disk. Never use --include-data-dirs=games
 # (that would copy readable source next to the binary).
 # Without the engine inside, games start then end instantly (no Play object).
-PYTHONPATH="$ROOT/games" python3 -m nuitka \
+PYTHONPATH="$ROOT/games" "$PY" -m nuitka \
   --standalone --onefile \
   --static-libpython=no \
   --lto=yes \
@@ -40,7 +43,7 @@ PYTHONPATH="$ROOT/games" python3 -m nuitka \
   api_main_freeze.py
 
 echo "== 3. freeze supervisor (tiny, same hardening) =="
-python3 -m nuitka \
+"$PY" -m nuitka \
   --standalone --onefile \
   --static-libpython=no \
   --lto=yes \
@@ -51,7 +54,7 @@ python3 -m nuitka \
   tools/k2b/supervisor.py
 
 echo "== 4. freeze bridge =="
-python3 -m nuitka \
+"$PY" -m nuitka \
   --standalone --onefile \
   --static-libpython=no \
   --lto=yes \
@@ -62,6 +65,6 @@ python3 -m nuitka \
   ws_bridge.py
 
 echo "== 5. stage allowlist + deny .py =="
-python3 tools/k2b/stage_allowlist.py --dist "$DIST" --out "$STAGE"
+"$PY" tools/k2b/stage_allowlist.py --dist "$DIST" --out "$STAGE"
 cp build-nuitka/hoops-api build-nuitka-bridge/hoops-bridge build-nuitka-supervisor/supervisor "$STAGE/"
 echo "done: $STAGE"

@@ -9,6 +9,10 @@ on:
       - "v*-k2b*"
   workflow_dispatch:
 
+# New repos default GITHUB_TOKEN to read-only; the release step needs write.
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -41,9 +45,16 @@ jobs:
       - name: Deny source in artifact
         shell: bash
         run: |
-          test -z "$(find stage-k2b -name '*.py' -o -name 'frontend' -maxdepth 2 | head -1)" || (echo "SOURCE LEAK" && exit 1)
-          test -f stage-k2b/hoops-api || test -f stage-k2b/hoops-api.exe
-          test -d stage-k2b/ui
+          if find stage-k2b -name '*.py' -print -quit | grep -q .; then
+            echo "::error::SOURCE LEAK - .py file found in stage-k2b"; exit 1
+          fi
+          test ! -e stage-k2b/frontend || (echo "SOURCE LEAK - frontend dir" && exit 1)
+          for f in hoops-api hoops-bridge supervisor; do
+            test -f "stage-k2b/$f" || test -f "stage-k2b/$f.exe" || (echo "missing $f" && exit 1)
+          done
+          test -d stage-k2b/ui || (echo "missing ui/" && exit 1)
+          test -f stage-k2b/simulator/static/index.html || (echo "missing sim page" && exit 1)
+          echo "stage verified: no .py, 3 binaries + ui + sim present"
       - name: Zip stage
         shell: bash
         run: |
