@@ -17,12 +17,19 @@ def get_install_root() -> Path:
     env = os.getenv("INSTALL_ROOT")
     if env:
         return Path(env)
+    cands = []
     if getattr(sys, "frozen", False):
-        meipass = getattr(sys, "_MEIPASS", None)
-        if meipass:
-            return Path(meipass)
-        return Path(sys.argv[0]).resolve().parent
-    return Path(__file__).resolve().parent.parent
+        # --standalone keeps sys.executable pointing at this real binary, so
+        # the install root is its folder or the parent (bins live in subfolders).
+        exe = getattr(sys, "executable", "") or ""
+        if exe:
+            d = Path(exe).resolve().parent
+            cands += [d, d.parent]
+    cands.append(Path(__file__).resolve().parent.parent)
+    for c in cands:
+        if (c / "games").is_dir() or (c / "ui").is_dir():
+            return c
+    return cands[0]
 
 
 _INSTALL_ROOT = get_install_root()

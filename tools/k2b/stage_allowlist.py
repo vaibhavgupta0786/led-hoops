@@ -37,8 +37,10 @@ def main():
             shutil.copytree(cand, out / "simulator" / "static", dirs_exist_ok=True)
     (out / "data").mkdir(exist_ok=True)
     (out / "README_OPERATOR.txt").write_text(
-        "LED Hoops operator build.\nDouble-click supervisor, Chrome opens full-screen.\n"
-        "Exit kiosk: Ctrl+Shift+K. Update = replace folder with new release zip.\n"
+        "LED Hoops operator build.\n"
+        "Double-click supervisor/supervisor, Chrome opens full-screen.\n"
+        "Exit kiosk: Ctrl+Shift+K.\n"
+        "Update = replace this whole folder with the new release zip.\n"
     )
     bad = [p for p in out.rglob("*.py")] + [p for p in out.rglob("*.ts")] \
         + [p for p in out.rglob("*.tsx") if "ui/assets" not in p.as_posix()]

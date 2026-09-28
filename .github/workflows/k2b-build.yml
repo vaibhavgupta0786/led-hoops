@@ -54,30 +54,34 @@ jobs:
             echo "::error::SOURCE LEAK - .py file found in stage-k2b"; exit 1
           fi
           test ! -e stage-k2b/frontend || (echo "SOURCE LEAK - frontend dir" && exit 1)
-          for f in hoops-api hoops-bridge supervisor; do
-            test -f "stage-k2b/$f" || test -f "stage-k2b/$f.exe" || (echo "missing $f" && exit 1)
+          for d in hoops-api hoops-bridge supervisor; do
+            test -d "stage-k2b/$d" || (echo "missing $d/ binary folder" && exit 1)
           done
+          test -f "stage-k2b/supervisor/supervisor" || test -f "stage-k2b/supervisor/supervisor.exe" \
+            || (echo "missing supervisor binary" && exit 1)
           test -d stage-k2b/ui || (echo "missing ui/" && exit 1)
           test -f stage-k2b/simulator/static/index.html || (echo "missing sim page" && exit 1)
           echo "stage verified: no .py, 3 binaries + ui + sim present"
-      - name: Smoke test the frozen binary
+      - name: Smoke test the frozen operator package
         shell: bash
         run: |
           # A binary that cannot boot must never ship. Compile success proves
-          # nothing: verify the real thing answers, sees levels, and runs a game.
+          # nothing, so run the thing an operator double-clicks: the supervisor.
+          # That exercises install-root discovery, env handoff, level loading
+          # and the compiled game engine in one shot.
           PY=$(command -v python3 || command -v python)
-          API=$(find stage-k2b -maxdepth 2 \( -name 'hoops-api' -o -name 'hoops-api.exe' \) -type f | head -1)
-          test -n "$API" || { echo "no hoops-api binary found in stage"; exit 1; }
-          export GAMES_ROOT="$PWD/stage-k2b/games" UI_DIR="$PWD/stage-k2b/ui" INSTALL_ROOT="$PWD/stage-k2b"
-          "$API" > /tmp/smoke-api.log 2>&1 &
+          SUP=stage-k2b/supervisor/supervisor
+          [ -f "$SUP" ] || SUP=stage-k2b/supervisor/supervisor.exe
+          "$SUP" > /tmp/smoke.log 2>&1 &
           for i in $(seq 1 60); do
             curl -sf -m 3 http://127.0.0.1:8000/health >/dev/null 2>&1 && break
             sleep 2
           done
-          curl -sf -m 5 http://127.0.0.1:8000/health || { echo "::error::API never became healthy"; tail -20 /tmp/smoke-api.log; exit 1; }
+          curl -sf -m 5 http://127.0.0.1:8000/health || {
+            echo "::error::supervisor never brought the API up"; tail -30 /tmp/smoke.log; exit 1; }
           COUNT=$(curl -sf -m 10 http://127.0.0.1:8000/levels | "$PY" -c "import sys,json;print(json.load(sys.stdin)['count'])")
           echo "levels visible: $COUNT"
-          test "$COUNT" -gt 0 || { echo "::error::frozen build sees zero levels"; exit 1; }
+          test "$COUNT" -gt 0 || { echo "::error::frozen build sees zero levels"; tail -20 /tmp/smoke.log; exit 1; }
           GID=$(curl -sf -m 10 -X POST http://127.0.0.1:8000/start-game -H 'Content-Type: application/json' \
             -d '{"card_id":"guest","level":"001","difficulty":"normal","player_count":1}' \
             | "$PY" -c "import sys,json;print(json.load(sys.stdin)['game_id'])")
@@ -88,7 +92,14 @@ jobs:
           s=json.load(sys.stdin)['state']
           print('game_over:',s['game_over'],'elapsed:',round(s['time_elapsed'],1),'level:',s.get('current_level'))
           sys.exit(0 if not s['game_over'] else 1)" || { echo "::error::game died immediately - engine not compiled in"; exit 1; }
-          echo "smoke test passed: binary boots, reads levels, runs the engine"
+          curl -sf -m 5 -o /dev/null http://127.0.0.1:8765/static/index.html \
+            || { echo "::error::bridge is not serving the simulator page"; exit 1; }
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            taskkill //F //IM hoops-api.exe //T || true; taskkill //F //IM hoops-bridge.exe //T || true
+          else
+            pkill -f 'hoops-api' || true; pkill -f 'hoops-bridge' || true
+          fi
+          echo "smoke test passed: supervisor boots, engine runs, bridge serves"
       - name: Zip stage
         shell: bash
         run: |
