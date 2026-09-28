@@ -1,0 +1,8 @@
+# Runtime deps for the frozen (Nuitka) operator build.
+# Pinned to the versions proven working in api/ + ws_bridge.py.
+# Nuitka compiles these INTO the binary, so CI must install them BEFORE building.
+fastapi==0.136.3
+uvicorn==0.48.0
+loguru==0.7.3
+httpx==0.28.1
+pydantic==2.13.4
